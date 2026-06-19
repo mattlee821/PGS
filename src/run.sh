@@ -141,7 +141,6 @@ if [[ "${1:-}" == "--test" ]]; then
     cd "${TEST_DIR}"
     nextflow run pgscatalog/pgsc_calc \
         -profile "test,${CONTAINER_PROFILE}" \
-        -config "${PGSC_CONFIG}" \
         --outdir "${TEST_DIR}/results" \
         2>&1 | tee -a "${LOG_FILE}"
     NXF_STATUS=${PIPESTATUS[0]}

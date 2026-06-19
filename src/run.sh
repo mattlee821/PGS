@@ -1,13 +1,25 @@
 #!/bin/bash
+#SBATCH --job-name=pgs
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=1
+#SBATCH --time=1-00:00:00
+#SBATCH --mem=4G
+#SBATCH --account=sscm015962
+#SBATCH --output=logs/%x-%j.out
+#SBATCH --error=logs/%x-%j.err
 # ==============================================================================
 # PGS-EPIC Run Script
 # Loads parameters from params.yml and runs the calculate_pgs pipeline.
 # Invocation details are logged to: ~/PGS/logs/run_<timestamp>.log
 # Full pipeline output is logged to: <dir_out>/pgs_calculation.log
 #
-# Usage:
-#   bash ~/PGS/src/run.sh --trait <PGS_ID|scorefile> --dir_out <output_dir> [options]
-#   bash ~/PGS/src/run.sh --test
+# Interactive:  bash ~/PGS/src/run.sh --trait <PGS_ID|scorefile> --dir_out <path>
+#               bash ~/PGS/src/run.sh --test
+# SLURM job:    sbatch ~/PGS/src/run.sh --trait <PGS_ID|scorefile> --dir_out <path>
+#               sbatch ~/PGS/src/run.sh --test
+# Override resources on the command line:
+#               sbatch --time=48:00:00 --mem=8G ~/PGS/src/run.sh --trait ...
 #
 # Options:
 #   --test               Run the pgsc_calc test profile; output goes to ~/PGS/test/
@@ -18,6 +30,23 @@
 #   -f, --filter_samples Path to a single-column file of sample IDs to keep
 # ==============================================================================
 set -euo pipefail
+
+# --- Initialize module system for non-interactive SLURM jobs ---
+if ! type module &>/dev/null 2>&1; then
+    for _mod_init in \
+        /etc/profile.d/lmod.sh \
+        /etc/profile.d/modules.sh \
+        /usr/share/lmod/lmod/init/bash \
+        /usr/share/modules/init/bash \
+        /usr/local/Modules/init/bash; do
+        if [[ -f "${_mod_init}" ]]; then
+            set +eu
+            source "${_mod_init}"
+            set -eu
+            break
+        fi
+    done
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"

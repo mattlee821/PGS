@@ -98,6 +98,7 @@ fi
 
 export PGSC_CONFIG="${REPO_ROOT}/pipeline/pgsc_calc.config"
 export NXF_SINGULARITY_CACHEDIR
+export NXF_APPTAINER_CACHEDIR="${NXF_SINGULARITY_CACHEDIR}"
 
 # --- Load container module if specified ---
 if [[ -n "${CONTAINER_MODULE}" ]]; then

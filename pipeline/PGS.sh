@@ -153,7 +153,7 @@ calculate_pgs() {
     cd "${work_dir}"
 
     nextflow run pgscatalog/pgsc_calc \
-        -profile "singularity" \
+        -profile "${CONTAINER_PROFILE:-singularity}" \
         -config "${PGSC_CONFIG}" \
         --input "${SAMPLESHEET_FILE}" \
         ${pgs_input_flag} \

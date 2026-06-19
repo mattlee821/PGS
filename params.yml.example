@@ -22,6 +22,11 @@ target_build: "GRCh37"
 # Must be on a shared filesystem accessible by all compute nodes.
 singularity_cache: "$HOME/singularity_cache"
 
+# HPC module name for Singularity or Apptainer.
+# Detected and filled in automatically by src/setup.sh.
+# Leave empty if singularity/apptainer is already in PATH without a module.
+container_module: ""
+
 # --- Pipeline Defaults ---
 
 # Minimum fraction of score variants that must be present in your data (0–1).

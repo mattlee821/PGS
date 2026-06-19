@@ -126,14 +126,37 @@ fi
 # ------------------------------------------------------------------------------
 header "Checking Singularity/Apptainer..."
 
+CONTAINER_MODULE=""
+
+# Helper: try loading a module in the current shell without triggering set -eu
+_try_module_load() {
+    local mod="$1"
+    set +eu
+    module load "${mod}" 2>/dev/null
+    set -eu
+}
+
 if command -v singularity &>/dev/null; then
-    info "Singularity found: $(singularity --version 2>/dev/null | xargs)"
+    info "Singularity found in PATH: $(singularity --version 2>/dev/null | xargs)"
 elif command -v apptainer &>/dev/null; then
-    info "Apptainer found: $(apptainer --version 2>/dev/null | xargs)"
+    info "Apptainer found in PATH: $(apptainer --version 2>/dev/null | xargs)"
+elif type module &>/dev/null 2>&1; then
+    info "Container runtime not in PATH — searching module system..."
+    for mod in apptainer singularity; do
+        _try_module_load "${mod}"
+        if command -v apptainer &>/dev/null || command -v singularity &>/dev/null; then
+            CONTAINER_MODULE="${mod}"
+            info "Module '${mod}' loaded and container runtime found."
+            break
+        fi
+    done
+    if [[ -z "${CONTAINER_MODULE}" ]]; then
+        warn "Could not load a container module automatically."
+        warn "Try: module avail apptainer  (or singularity) to find the right module name."
+        warn "Then set container_module in params.yml and re-run setup."
+    fi
 else
-    warn "Singularity/Apptainer not found in PATH."
-    warn "pgsc_calc requires Singularity or Apptainer to run containers."
-    warn "On HPC: try 'module load singularity' or 'module load apptainer'"
+    warn "Singularity/Apptainer not found and no module system detected."
     warn "Install guide: https://docs.sylabs.io/guides/latest/admin-guide/installation.html"
 fi
 
@@ -147,19 +170,30 @@ PARAMS_EXAMPLE="${REPO_ROOT}/params.yml.example"
 
 if [[ -f "${PARAMS_FILE}" ]]; then
     info "params.yml already exists — skipping creation."
+    # Still update container_module if we just detected one and the file has it empty
+    if [[ -n "${CONTAINER_MODULE}" ]]; then
+        sed -i "s|^container_module:[[:space:]]*\"\"$|container_module: \"${CONTAINER_MODULE}\"|" "${PARAMS_FILE}"
+        info "Updated container_module to '${CONTAINER_MODULE}' in existing params.yml"
+    fi
 else
-    # Expand $HOME so the written file contains the real path
+    # Expand $HOME and inject detected container_module
     sed "s|\$HOME|${HOME}|g" "${PARAMS_EXAMPLE}" > "${PARAMS_FILE}"
+    if [[ -n "${CONTAINER_MODULE}" ]]; then
+        sed -i "s|^container_module:[[:space:]]*\"\"$|container_module: \"${CONTAINER_MODULE}\"|" "${PARAMS_FILE}"
+    fi
     info "Created params.yml (paths expanded for ${HOME})"
 fi
 
 # Warn if required fields are still empty
 MISSING=()
-grep -q 'genetics_path:[[:space:]]*""' "${PARAMS_FILE}"  && MISSING+=("genetics_path")
+grep -q 'genetics_path:[[:space:]]*""' "${PARAMS_FILE}" && MISSING+=("genetics_path")
+(grep -q 'container_module:[[:space:]]*""' "${PARAMS_FILE}" && \
+ ! command -v singularity &>/dev/null && \
+ ! command -v apptainer &>/dev/null) && MISSING+=("container_module")
 
 if [[ ${#MISSING[@]} -gt 0 ]]; then
     echo ""
-    echo -e "${YELLOW}ACTION REQUIRED:${NC} Edit params.yml before running the pipeline."
+    echo -e "${YELLOW}ACTION REQUIRED:${NC} Edit ~/PGS/params.yml before running the pipeline."
     echo ""
     echo "  Missing required values:"
     for field in "${MISSING[@]}"; do
@@ -174,11 +208,15 @@ fi
 # ------------------------------------------------------------------------------
 header "Setup complete!  |  $(date)"
 echo ""
-echo "Usage:"
-echo "  bash src/run.sh --trait PGS000717 --dir_out /path/to/output"
+echo "Next: verify the pipeline works with the bundled test dataset:"
+echo "  bash ~/PGS/src/run.sh --test"
 echo ""
-echo "To submit as a SLURM job:"
+echo "Then run your analysis:"
+echo "  bash ~/PGS/src/run.sh --trait PGS000717 --dir_out ~/PGS/analysis/bmi"
+echo ""
+echo "Or submit as a SLURM job (create my_pgs_job.sh):"
 echo "  #!/bin/bash"
 echo "  #SBATCH --job-name=pgs --ntasks=1 --mem=4G --time=10:00:00"
-echo "  bash /path/to/PGS-EPIC/src/run.sh --trait PGS000717 --dir_out /path/to/output"
+echo "  bash ~/PGS/src/run.sh --trait PGS000717 --dir_out ~/PGS/analysis/bmi"
+echo "  sbatch my_pgs_job.sh"
 echo ""

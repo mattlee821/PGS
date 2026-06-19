@@ -46,7 +46,7 @@ PGS-EPIC/
 
 ```bash
 cd ~
-git clone https://github.com/YOUR_ORG/PGS.git
+git clone https://github.com/mattlee821/PGS.git
 cd ~/PGS
 ```
 
@@ -61,59 +61,42 @@ This will:
 - Detect and load the Singularity or Apptainer module from the HPC module system
 - Create `params.yml` from the template, with `$HOME` paths already expanded
 
-### Step 3: Configure parameters
-
-Only `genetics_path` requires manual input. Edit `~/PGS/params.yml`:
-
-```yaml
-genetics_path: "/path/to/your/genetics/data_prefix"
-```
-
-All other parameters are set to sensible defaults (see `params.yml.example` for the full list). If setup could not detect your container module automatically, also fill in `container_module` with the output of `module avail apptainer` or `module avail singularity`.
-
-### Step 4: Run the test
+### Step 3: Run the `pgsc_calc` test
 
 Verify the pipeline is working with the bundled pgsc_calc test dataset:
 
 ```bash
-bash ~/PGS/src/run.sh --test
+sbatch --job-name=pgs-test src/run.sh --test
 ```
 
 Output and logs go to `~/PGS/test/`. This confirms Java, Nextflow, and Singularity/Apptainer are all wired up correctly before using your own data.
 
+### Step 4: Configure parameters
+
+Edit `~/PGS/params.yml`:
+
+```yaml
+genetics_path: "/path/to/your/genetics/data_prefix"
+target_build: "YOUR-DATA-BUILD" # e.g., "GRCh37"
+```
+
+All other parameters are set to sensible defaults (see `params.yml.example` for the full list). If setup could not detect your container module automatically, also fill in `container_module` with the output of `module avail apptainer` or `module avail singularity`.
+
 ### Step 5: Run your analysis
 
-`src/run.sh` is a self-contained SBATCH script. Submit it directly with `sbatch` from the `~/PGS/` directory:
+
+`src/run.sh` is a self-contained SBATCH script which you submit directly with `sbatch` from the `~/PGS/` directory. You may need to modify the `#SBATCH` params for your HPC specifics. Otherwise you can submit the job by specifying params directly:
 
 ```bash
 cd ~/PGS
-sbatch src/run.sh --trait "PGS000717" --dir_out ~/PGS/analysis/bmi
+sbatch --job-name=pgs-PGS000717 src/run.sh --trait "PGS000717" --dir_out ~/PGS/analysis/PGS000717
 ```
 
 This submits the Nextflow launcher as a SLURM job. Nextflow then submits the actual compute steps as additional SLURM jobs, using the resource limits in `pipeline/pgsc_calc.config`.
 
-**Set the job name** with `--job-name` to identify your analysis in the queue. The default is `pgs`; use something descriptive:
-
-```bash
-sbatch --job-name=pgs-bmi src/run.sh --trait "PGS000717" --dir_out ~/PGS/analysis/bmi
-```
-
-SLURM logs are written to `~/PGS/logs/<job-name>-<job-id>.out` and `.err`. With the example above:
-- `~/PGS/logs/pgs-bmi-12345678.out`
-- `~/PGS/logs/pgs-bmi-12345678.err`
-
-**Override other SBATCH parameters** on the command line as needed:
-
-```bash
-sbatch --job-name=pgs-bmi --time=2-00:00:00 --mem=8G \
-  src/run.sh --trait "PGS000717" --dir_out ~/PGS/analysis/bmi
-```
-
-You can also run interactively (e.g. for debugging or testing):
-
-```bash
-bash src/run.sh --trait "PGS000717" --dir_out ~/PGS/analysis/bmi
-```
+SLURM logs are written to `~/PGS/logs/<job-name>.out` and `.err`. With the example above:
+- `~/PGS/logs/pgs-PGS000717.out`
+- `~/PGS/logs/pgs-PGS000717.err`
 
 ## Parameters
 
@@ -143,28 +126,17 @@ bash src/run.sh --trait "PGS000717" --dir_out ~/PGS/analysis/bmi
 Run all `sbatch` commands from `~/PGS/`. The `--job-name` sets the log file names (`logs/<job-name>-<job-id>.out`).
 
 ```bash
-# Verify setup with the bundled test dataset
-sbatch --job-name=pgs-test src/run.sh --test
-
-# Single PGS Catalog ID
-sbatch --job-name=pgs-bmi src/run.sh --trait "PGS000717" --dir_out ~/PGS/analysis/bmi
-
 # Multiple PGS Catalog IDs
-sbatch --job-name=pgs-bmi src/run.sh --trait "PGS000717,PGS002013" --dir_out ~/PGS/analysis/bmi
+sbatch --job-name=pgs-test1 src/run.sh --trait "PGS000717,PGS002013" --dir_out ~/PGS/analysis/test1
 
-# Local custom scorefile
-sbatch --job-name=pgs-custom src/run.sh --trait "my/score/file.txt" --dir_out ~/PGS/analysis/custom
+# Local scorefile
+sbatch --job-name=pgs-test2 src/run.sh --trait "~/PGS/scorefile.txt" --dir_out ~/PGS/analysis/test2
 
-# With sample filter and custom overlap threshold
-sbatch --job-name=pgs-bmi src/run.sh \
+# With sample filter
+sbatch --job-name=pgs-test3 src/run.sh \
   --trait "PGS000717" \
-  --dir_out ~/PGS/analysis/bmi \
-  --filter_samples "ids_to_keep.txt" \
-  --min_overlap 0.80
-
-# Override SLURM resources
-sbatch --job-name=pgs-bmi --time=2-00:00:00 --mem=8G \
-  src/run.sh --trait "PGS000717" --dir_out ~/PGS/analysis/bmi
+  --dir_out ~/PGS/analysis/test3 \
+  --filter_samples "ids_to_keep.txt" 
 ```
 
 ## Output

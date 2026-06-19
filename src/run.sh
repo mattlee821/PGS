@@ -6,8 +6,8 @@
 #SBATCH --time=1-00:00:00
 #SBATCH --mem=4G
 #SBATCH --account=sscm015962
-#SBATCH --output=logs/%x-%j.out
-#SBATCH --error=logs/%x-%j.err
+#SBATCH --output=logs/%x.out
+#SBATCH --error=logs/%x.err
 # ==============================================================================
 # PGS-EPIC Run Script
 # Loads parameters from params.yml and runs the calculate_pgs pipeline.

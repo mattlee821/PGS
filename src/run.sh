@@ -112,14 +112,33 @@ if [[ -n "${CONTAINER_MODULE}" ]]; then
 fi
 
 # --- Determine Nextflow container profile ---
-# Check apptainer before singularity: Apptainer installs a singularity compat
-# symlink, so checking singularity first would give the wrong profile on Apptainer systems.
-if command -v apptainer &>/dev/null; then
+# Search for container runtimes excluding tools/ so we find the real binary, not a previous wrapper.
+# Check apptainer before singularity: Apptainer installs a singularity compat symlink, so
+# checking singularity first would give the wrong profile on Apptainer systems.
+_PATH_NO_TOOLS="${PATH//${REPO_ROOT}\/tools:/}"
+_REAL_APPTAINER=$(PATH="${_PATH_NO_TOOLS}" command -v apptainer 2>/dev/null || true)
+
+if [[ -n "${_REAL_APPTAINER}" ]]; then
     export CONTAINER_PROFILE="apptainer"
-elif command -v singularity &>/dev/null; then
+    # Nextflow adds --pid to apptainer exec, which requires user namespace support.
+    # On systems where that is unavailable, create a wrapper in tools/ that strips --pid.
+    _WRAPPER="${REPO_ROOT}/tools/apptainer"
+    cat > "${_WRAPPER}" << WRAPPER_EOF
+#!/bin/bash
+args=()
+for arg in "\$@"; do
+    [[ "\$arg" == "--pid" ]] && continue
+    args+=("\$arg")
+done
+exec "${_REAL_APPTAINER}" "\${args[@]}"
+WRAPPER_EOF
+    chmod +x "${_WRAPPER}"
+    # Re-prepend tools/ so Nextflow finds the wrapper before the real binary
+    export PATH="${REPO_ROOT}/tools:${PATH}"
+elif PATH="${_PATH_NO_TOOLS}" command -v singularity &>/dev/null; then
     export CONTAINER_PROFILE="singularity"
 else
-    echo "Error: Neither singularity nor apptainer found after loading module '${CONTAINER_MODULE}'." >&2
+    echo "Error: Neither singularity nor apptainer found after loading module '${CONTAINER_MODULE:-none}'." >&2
     echo "Set container_module in params.yml to the correct module name." >&2
     exit 1
 fi

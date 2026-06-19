@@ -111,10 +111,12 @@ if [[ -n "${CONTAINER_MODULE}" ]]; then
 fi
 
 # --- Determine Nextflow container profile ---
-if command -v singularity &>/dev/null; then
-    export CONTAINER_PROFILE="singularity"
-elif command -v apptainer &>/dev/null; then
+# Check apptainer before singularity: Apptainer installs a singularity compat
+# symlink, so checking singularity first would give the wrong profile on Apptainer systems.
+if command -v apptainer &>/dev/null; then
     export CONTAINER_PROFILE="apptainer"
+elif command -v singularity &>/dev/null; then
+    export CONTAINER_PROFILE="singularity"
 else
     echo "Error: Neither singularity nor apptainer found after loading module '${CONTAINER_MODULE}'." >&2
     echo "Set container_module in params.yml to the correct module name." >&2

@@ -1,0 +1,29 @@
+# ==============================================================================
+# PGS-EPIC Parameters
+# Copy this file to params.yml and fill in the values for your environment.
+# params.yml is gitignored and will not be committed.
+# ==============================================================================
+
+# --- Genetics Data ---
+
+# Required: Prefix path to PLINK binary files (WITHOUT .bed/.bim/.fam extension)
+# Example: /my/genetics/study1
+genetics_path: ""
+
+# Name identifier used internally by pgsc_calc for your sampleset
+sampleset_name: "combined"
+
+# Genome build of your input genotype data
+target_build: "GRCh37"
+
+# --- Infrastructure ---
+
+# Required: Directory to cache Singularity/Apptainer container images.
+# Must be on a shared filesystem accessible by all compute nodes.
+singularity_cache: "$HOME/singularity_cache"
+
+# --- Pipeline Defaults ---
+
+# Minimum fraction of score variants that must be present in your data (0–1).
+# Scores falling below this threshold are excluded from the final output.
+min_overlap: 0.75
